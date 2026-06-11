@@ -1,0 +1,60 @@
+name: Deploy to Render
+
+# CI/CD for the simple-app (Node.js + Express).
+#
+# How it works:
+#   1. "test" job runs the test suite as a quality gate.
+#   2. If tests pass on a push to main, the "deploy" job calls Render's
+#      Deploy Hook, which tells Render to pull the latest code, build it
+#      (using the repo's Dockerfile), and roll out the new version.
+#
+# One-time setup you do yourself (see notes from Claude):
+#   - Create a free Web Service on Render connected to this repo.
+#   - Copy its "Deploy Hook" URL and add it to this repo as a secret
+#     named RENDER_DEPLOY_HOOK_URL (Settings -> Secrets and variables -> Actions).
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Install & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  deploy:
+    name: Trigger Render Deploy
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Render Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set. Add it under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          echo "Triggering Render deploy..."
+          response=$(curl -fsS -w "%{http_code}" -o /dev/null "$RENDER_DEPLOY_HOOK_URL")
+          echo "Render responded with HTTP status: $response"
+          echo "Deploy triggered. Watch progress in your Render dashboard."

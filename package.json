@@ -1,0 +1,17 @@
+{
+  "name": "simple-app",
+  "version": "1.0.0",
+  "description": "A simple full-stack web app (Express backend + static frontend) with a Jenkins CI/CD pipeline.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
